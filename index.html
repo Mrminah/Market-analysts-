@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Market Analysis Dashboard</title>
+<style>
+  body { margin:0; font-family: Arial, sans-serif; background:#0d1117; color:#e6edf3; }
+  header { padding:20px; text-align:center; background:#161b22; }
+  header h1 { margin:0; font-size:22px; }
+  header p { margin:6px 0 0; color:#8b949e; font-size:13px; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; padding:15px; }
+  .controls label { font-size:13px; color:#8b949e; }
+  .controls input, .controls select { padding:8px; border-radius:6px; border:1px solid #30363d; background:#0d1117; color:#e6edf3; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:15px; padding:15px; }
+  .card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:15px; }
+  .card h2 { margin:0 0 5px; font-size:18px; }
+  .price { font-size:24px; font-weight:bold; margin:5px 0; }
+  .bull { color:#3fb950; font-weight:bold; }
+  .bear { color:#f85149; font-weight:bold; }
+  .row { display:flex; justify-content:space-between; padding:4px 0; font-size:14px; border-bottom:1px solid #21262d; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:10px; background:#1f6feb; font-size:12px; margin-bottom:8px; }
+  .note { font-size:13px; color:#8b949e; margin-top:10px; }
+  footer { padding:20px; text-align:center; font-size:12px; color:#8b949e; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Market Analysis Dashboard</h1>
+  <p>Gold, Silver, EUR/USD and BTC. Smart money style analysis. Sample data for now.</p>
+</header>
+
+<div class="controls">
+  <label>Mode
+    <select id="mode">
+      <option>Scalp</option>
+      <option selected>Day Trade</option>
+      <option>Swing</option>
+    </select>
+  </label>
+  <label>Capital ($)
+    <input id="capital" type="number" value="1000" min="1">
+  </label>
+  <label>Risk per trade (%)
+    <input id="risk" type="number" value="1" min="0.1" step="0.1">
+  </label>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<footer>
+  This is analysis for education only, not financial advice. Trading carries a high risk of loss.<br>
+  Last updated: <span id="updated"></span>
+</footer>
+
+<script>
+// SAMPLE DATA. Later, the back end will replace this with real analysis in data.json
+const signals = [
+  { pair:"XAU/USD (Gold)", bias:"Bullish", entry:2650.0, sl:2644.0, tp:2710.0, perUnit:100, note:"Daily bullish structure. 4H order block. 15M change of character." },
+  { pair:"XAG/USD (Silver)", bias:"Bearish", entry:31.20, sl:31.60, tp:29.80, perUnit:5000, note:"Daily bearish. 4H fair value gap. 15M break of structure." },
+  { pair:"EUR/USD", bias:"Bullish", entry:1.0850, sl:1.0825, tp:1.0950, perUnit:100000, note:"4H discount zone. London session sweep of lows." },
+  { pair:"BTC/USD", bias:"Bearish", entry:90000, sl:91000, tp:84000, perUnit:1, note:"Daily premium zone. 15M change of character after liquidity sweep." }
+];
+
+function tradeType(rr, mode) {
+  return mode;
+}
+
+function render() {
+  const mode = document.getElementById('mode').value;
+  const capital = parseFloat(document.getElementById('capital').value) || 0;
+  const riskPct = parseFloat(document.getElementById('risk').value) || 0;
+  const riskMoney = capital * riskPct / 100;
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  signals.forEach(s => {
+    const stopDist = Math.abs(s.entry - s.sl);
+    const tpDist = Math.abs(s.tp - s.entry);
+    const rr = (tpDist / stopDist).toFixed(1);
+    // Position size in units, then convert to lots using perUnit (units per 1 lot)
+    const units = riskMoney / stopDist;
+    const lots = (units / s.perUnit).toFixed(2);
+    const cls = s.bias === 'Bullish' ? 'bull' : 'bear';
+    grid.innerHTML += `
+      <div class="card">
+        <span class="tag">${tradeType(rr, mode)}</span>
+        <h2>${s.pair}</h2>
+        <div class="${cls}">${s.bias}</div>
+        <div class="row"><span>Entry</span><span>${s.entry}</span></div>
+        <div class="row"><span>Stop loss</span><span>${s.sl}</span></div>
+        <div class="row"><span>Take profit</span><span>${s.tp}</span></div>
+        <div class="row"><span>Risk to reward</span><span>1 : ${rr}</span></div>
+        <div class="row"><span>Risk amount</span><span>$${riskMoney.toFixed(2)}</span></div>
+        <div class="row"><span>Suggested lot size</span><span>${lots}</span></div>
+        <div class="note">${s.note}</div>
+      </div>`;
+  });
+  document.getElementById('updated').textContent = new Date().toLocaleString();
+}
+
+document.getElementById('mode').addEventListener('change', render);
+document.getElementById('capital').addEventListener('input', render);
+document.getElementById('risk').addEventListener('input', render);
+render();
+</script>
+</body>
+</html>
