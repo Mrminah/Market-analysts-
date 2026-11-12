@@ -1,107 +1,294 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang='en'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
 <title>Market Analysis Dashboard</title>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/lightweight-charts/4.1.3/lightweight-charts.standalone.production.js'></script>
 <style>
-  body { margin:0; font-family: Arial, sans-serif; background:#0d1117; color:#e6edf3; }
-  header { padding:20px; text-align:center; background:#161b22; }
-  header h1 { margin:0; font-size:22px; }
-  header p { margin:6px 0 0; color:#8b949e; font-size:13px; }
-  .controls { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; padding:15px; }
-  .controls label { font-size:13px; color:#8b949e; }
-  .controls input, .controls select { padding:8px; border-radius:6px; border:1px solid #30363d; background:#0d1117; color:#e6edf3; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:15px; padding:15px; }
-  .card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:15px; }
-  .card h2 { margin:0 0 5px; font-size:18px; }
-  .price { font-size:24px; font-weight:bold; margin:5px 0; }
-  .bull { color:#3fb950; font-weight:bold; }
-  .bear { color:#f85149; font-weight:bold; }
-  .row { display:flex; justify-content:space-between; padding:4px 0; font-size:14px; border-bottom:1px solid #21262d; }
-  .tag { display:inline-block; padding:2px 8px; border-radius:10px; background:#1f6feb; font-size:12px; margin-bottom:8px; }
-  .note { font-size:13px; color:#8b949e; margin-top:10px; }
-  footer { padding:20px; text-align:center; font-size:12px; color:#8b949e; }
-</style>
-</head>
-<body>
-<header>
-  <h1>Market Analysis Dashboard</h1>
-  <p>Gold, Silver, EUR/USD and BTC. Smart money style analysis. Sample data for now.</p>
-</header>
-
-<div class="controls">
-  <label>Mode
-    <select id="mode">
-      <option>Scalp</option>
-      <option selected>Day Trade</option>
-      <option>Swing</option>
-    </select>
-  </label>
-  <label>Capital ($)
-    <input id="capital" type="number" value="1000" min="1">
-  </label>
-  <label>Risk per trade (%)
-    <input id="risk" type="number" value="1" min="0.1" step="0.1">
-  </label>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#0d1117;color:#e6edf3}
+header{padding:16px;text-align:center;background:#161b22}
+header h1{margin:0;font-size:20px}
+header p{margin:5px 0 0;color:#8b949e;font-size:12px}
+.wrap{max-width:900px;margin:0 auto;padding:12px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tab{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:10px;color:#e6edf3;text-align:left;cursor:pointer}
+.tab.on{border-color:#58a6ff}
+.tn{font-size:12px;color:#8b949e}.tp{font-size:16px;font-weight:bold;margin:3px 0}.tb{font-size:12px;font-weight:bold}
+.bull{color:#3fb950}.bear{color:#f85149}
+.bar{display:flex;gap:8px;margin:12px 0 8px;align-items:center}
+.bar button{padding:6px 12px;border-radius:6px;border:1px solid #30363d;background:#161b22;color:#e6edf3}
+.bar button.on{background:#1f6feb}
+.bar span{margin-left:auto;font-size:11px;color:#8b949e}
+#chart{height:340px;border:1px solid #30363d;border-radius:10px;overflow:hidden}
+.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px;margin-top:12px}
+.card h3{margin:0 0 8px;font-size:15px}
+.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #21262d;font-size:14px}
+.tag{display:inline-block;padding:2px 9px;border-radius:10px;background:#1f6feb;font-size:11px}
+.nw{background:#da3633}
+.note{font-size:13px;color:#8b949e;margin-top:10px;line-height:1.5}
+.in{display:flex;gap:10px;flex-wrap:wrap}.in label{font-size:12px;color:#8b949e}
+.in input,.in select{display:block;margin-top:4px;padding:8px;width:130px;border-radius:6px;border:1px solid #30363d;background:#0d1117;color:#e6edf3}
+.sg{border:1px solid #30363d;border-radius:8px;padding:10px;margin-top:10px}
+.sh{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:6px}
+.sd{font-size:12px;color:#8b949e;line-height:1.6}
+.why{font-size:12px;color:#f0b3ae;margin-top:6px;line-height:1.5}
+#toast{display:none;position:fixed;top:10px;left:10px;right:10px;z-index:9;background:#1f6feb;padding:12px;border-radius:8px;font-size:14px;text-align:center}
+details{margin-top:8px;font-size:13px}summary{cursor:pointer;color:#58a6ff;padding:4px 0}details p{color:#8b949e;line-height:1.5;margin:4px 0 8px}footer{padding:16px;text-align:center;font-size:11px;color:#8b949e}
+</style></head><body>
+<div id='toast'></div>
+<header><h1>Market Analysis Dashboard</h1><p>Live prices every second. 1H bias, 15M change of character entries.</p></header>
+<div class='wrap'>
+<div class='tabs' id='tabs'></div>
+<div class='bar'><button id='b15' class='on'>15M</button><button id='b1h'>1H</button><span id='upd'>Loading…</span></div>
+<div id='chart'></div>
+<div class='card'><h3>Market now</h3><div id='now'></div></div>
+<div class='card'><h3>Your settings</h3>
+<div class='in'>
+<label>Capital ($)<input id='cap' type='number' value='1000' min='1'></label>
+<label>Risk per trade (%)<select id='rk'><option value='auto'>Auto (suggested)</option><option>0.25</option><option>0.5</option><option>1</option><option>1.5</option><option>2</option></select></label>
+<label>Mode<select id='mode'><option>All</option><option>Scalp</option><option>Day trade</option><option>Swing</option></select></label>
+<label>Max open per pair<select id='maxper'><option>1</option><option>2</option><option selected>3</option><option>4</option></select></label>
+<label>Max total risk (%)<select id='maxtot'><option>2</option><option selected>3</option><option>4</option><option>6</option></select></label>
+</div></div>
+<div class='card'><h3>Suggested for you</h3><div id='sug'></div></div><div class='card'><h3>Live signals</h3><div id='sigs'></div></div><div class='card'><h3>Trading styles explained</h3><details><summary>Scalper</summary><p>Holds trades from seconds to about an hour and takes many small trades a day. Uses the 1H chart for direction and the 5M or 15M chart for entries. It needs constant attention, and spreads eat a large share of small profits.</p></details><details><summary>Day trader</summary><p>Opens and closes trades within the same day and does not hold overnight. Takes a few trades a day using the 4H and 1H charts for direction and the 15M chart for entries. Targets are sized to fit inside the day’s range.</p></details><details><summary>Swing trader</summary><p>Holds trades for several days up to a few weeks. Takes fewer trades with wider stops and smaller lot sizes, using the weekly and daily charts for direction and the 4H chart for entries. Overnight and weekend gaps are the main risk.</p></details><details><summary>Position and fundamental trader</summary><p>Holds trades for weeks or months and decides mainly from the economy: interest rates, inflation, jobs data and central bank decisions, not chart patterns. This site uses chart analysis only and does not read fundamentals. Big news releases can still move price against any style, so be careful around them.</p></details><details><summary>How this site labels signals</summary><p>By how much of the day’s average range the first target needs. Under 25% is a Scalp, 25% to 100% is a Day trade, and over 100% is a Swing. Use the Mode setting to see only the style you trade.</p></details></div>
 </div>
-
-<div class="grid" id="grid"></div>
-
-<footer>
-  This is analysis for education only, not financial advice. Trading carries a high risk of loss.<br>
-  Last updated: <span id="updated"></span>
-</footer>
-
+<footer>Analysis for education only, not financial advice. Trading carries a high risk of loss. Signals are rule-based and can be wrong.</footer>
 <script>
-// SAMPLE DATA. Later, the back end will replace this with real analysis in data.json
-const signals = [
-  { pair:"XAU/USD (Gold)", bias:"Bullish", entry:2650.0, sl:2644.0, tp:2710.0, perUnit:100, note:"Daily bullish structure. 4H order block. 15M change of character." },
-  { pair:"XAG/USD (Silver)", bias:"Bearish", entry:31.20, sl:31.60, tp:29.80, perUnit:5000, note:"Daily bearish. 4H fair value gap. 15M break of structure." },
-  { pair:"EUR/USD", bias:"Bullish", entry:1.0850, sl:1.0825, tp:1.0950, perUnit:100000, note:"4H discount zone. London session sweep of lows." },
-  { pair:"BTC/USD", bias:"Bearish", entry:90000, sl:91000, tp:84000, perUnit:1, note:"Daily premium zone. 15M change of character after liquidity sweep." }
-];
+const $=id=>document.getElementById(id);
+const ASSETS={
+ gold:{name:'Gold',sym:'PAXGUSDT',dec:2,unit:100},
+ btc:{name:'Bitcoin',sym:'BTCUSDT',dec:2,unit:1},
+ eur:{name:'EUR/USD',sym:'EURUSDT',dec:5,unit:100000}
+};
+const HOSTS=['https://api.binance.com','https://data-api.binance.vision'];
+let cur='gold',tf='15m',D={},P={},lines=[],first=true,limitMsg='',busy=false;
+const off=-new Date().getTimezoneOffset()*60;
+function ld(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+let sigs=ld('sig2',[]);
+const c0=ld('cfg2',null);
+if(c0){for(const k in c0){if($(k))$(k).value=c0[k]}}
+function sugRisk(m){return m==='Scalp'?0.5:1} function cfg(){const m=$('mode').value,v=$('rk').value,auto=!v||v==='auto',rk=auto?sugRisk(m):Math.min(+v||1,2);return{cap:+$('cap').value||0,rk,auto,mode:m,maxPer:+$('maxper').value,maxTot:Math.min(+$('maxtot').value||3,6)}}
+function saveCfg(){sv('cfg2',{cap:$('cap').value,rk:$('rk').value,mode:$('mode').value,maxper:$('maxper').value,maxtot:$('maxtot').value})}
 
-function tradeType(rr, mode) {
-  return mode;
+const chart=LightweightCharts.createChart($('chart'),{autoSize:true,layout:{background:{color:'#161b22'},textColor:'#8b949e'},grid:{vertLines:{color:'#21262d'},horzLines:{color:'#21262d'}},timeScale:{timeVisible:true,borderColor:'#30363d'},rightPriceScale:{borderColor:'#30363d'}});
+const series=chart.addCandlestickSeries({upColor:'#3fb950',downColor:'#f85149',borderVisible:false,wickUpColor:'#3fb950',wickDownColor:'#f85149'});
+
+async function getK(sym,iv,limit){
+ let err;
+ for(const h of HOSTS){
+  try{
+   const r=await fetch(`${h}/api/v3/klines?symbol=${sym}&interval=${iv}&limit=${limit}`);
+   if(!r.ok)throw new Error('bad');
+   const a=await r.json();
+   return a.map(k=>({time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
+  }catch(e){err=e}
+ }
+ throw err;
+}
+function ema(c,p){const k=2/(p+1);let e=c[0];const o=[e];for(let i=1;i<c.length;i++){e=c[i]*k+e*(1-k);o.push(e)}return o}
+function atr(d,p=14){let s=0;for(let i=d.length-p;i<d.length;i++){const x=d[i],pc=d[i-1].close;s+=Math.max(x.high-x.low,Math.abs(x.high-pc),Math.abs(x.low-pc))}return s/p}
+function swings(d,L=3){
+ const hi=[],lo=[];
+ for(let i=L;i<d.length-L;i++){
+  let h=true,l=true;
+  for(let j=1;j<=L;j++){
+   if(d[i].high<=d[i-j].high||d[i].high<=d[i+j].high)h=false;
+   if(d[i].low>=d[i-j].low||d[i].low>=d[i+j].low)l=false;
+  }
+  if(h)hi.push({i,p:d[i].high});
+  if(l)lo.push({i,p:d[i].low});
+ }
+ return{hi,lo};
+}
+function bias(h){
+ const c=h.map(x=>x.close),e20=ema(c,20),e50=ema(c,50),n=c.length-1,s=swings(h,3);
+ let sc=0;
+ sc+=c[n]>e50[n]?1:-1;
+ sc+=e20[n]>e50[n]?1:-1;
+ const H=s.hi.slice(-2),L=s.lo.slice(-2);
+ if(H.length===2&&L.length===2){
+  if(H[1].p>H[0].p&&L[1].p>L[0].p)sc++;
+  else if(H[1].p<H[0].p&&L[1].p<L[0].p)sc--;
+ }
+ return sc>=2?'Bullish':sc<=-2?'Bearish':'Neutral';
+}
+function setup(m,b,dATR){
+ const n=m.length-1,p=m[n].close,at=atr(m),s=swings(m,3),H=s.hi.slice(-2),L=s.lo.slice(-2);
+ const r={state:'wait',price:p,why:'neutral',at};
+ if(b==='Neutral'||H.length<2||L.length<2)return r;
+ const up=b==='Bullish';
+ const lvl=up?H[1].p:L[1].p;
+ r.watch=lvl;r.lvl=lvl;r.why='watch';
+ const choch=up?(H[1].p<H[0].p&&p>lvl):(L[1].p>L[0].p&&p<lvl);
+ if(!choch)return r;
+ if(Math.abs(p-lvl)>at){r.why='chase';return r}
+ let stop=up?L[1].p-0.25*at:H[1].p+0.25*at;
+ let risk=Math.abs(p-stop);
+ if(risk<0.6*at){risk=0.6*at;stop=up?p-risk:p+risk}
+ if(risk>2*at){r.why='wide';return r}
+ const d=up?1:-1;
+ Object.assign(r,{state:'go',dir:up?'BUY':'SELL',entry:p,sl:stop,risk,tp1:p+d*2*risk,tp2:p+d*3*risk});
+ r.use=(2*risk)/dATR*100;
+ r.type=r.use<25?'Scalp':r.use<=100?'Day trade':'Swing';
+ return r;
+}
+async function load(key){
+ const a=ASSETS[key];
+ try{
+  const [m15,h1,d1]=await Promise.all([getK(a.sym,'15m',200),getK(a.sym,'1h',200),getK(a.sym,'1d',30)]);
+  const b=bias(h1),dATR=atr(d1,14);
+  D[key]={m15,h1,b,dATR,s:setup(m15,b,dATR),err:false};
+ }catch(e){D[key]=Object.assign({},D[key]||{},{err:true})}
 }
 
-function render() {
-  const mode = document.getElementById('mode').value;
-  const capital = parseFloat(document.getElementById('capital').value) || 0;
-  const riskPct = parseFloat(document.getElementById('risk').value) || 0;
-  const riskMoney = capital * riskPct / 100;
-  const grid = document.getElementById('grid');
-  grid.innerHTML = '';
-  signals.forEach(s => {
-    const stopDist = Math.abs(s.entry - s.sl);
-    const tpDist = Math.abs(s.tp - s.entry);
-    const rr = (tpDist / stopDist).toFixed(1);
-    // Position size in units, then convert to lots using perUnit (units per 1 lot)
-    const units = riskMoney / stopDist;
-    const lots = (units / s.perUnit).toFixed(2);
-    const cls = s.bias === 'Bullish' ? 'bull' : 'bear';
-    grid.innerHTML += `
-      <div class="card">
-        <span class="tag">${tradeType(rr, mode)}</span>
-        <h2>${s.pair}</h2>
-        <div class="${cls}">${s.bias}</div>
-        <div class="row"><span>Entry</span><span>${s.entry}</span></div>
-        <div class="row"><span>Stop loss</span><span>${s.sl}</span></div>
-        <div class="row"><span>Take profit</span><span>${s.tp}</span></div>
-        <div class="row"><span>Risk to reward</span><span>1 : ${rr}</span></div>
-        <div class="row"><span>Risk amount</span><span>$${riskMoney.toFixed(2)}</span></div>
-        <div class="row"><span>Suggested lot size</span><span>${lots}</span></div>
-        <div class="note">${s.note}</div>
-      </div>`;
+function toast(t){
+ const e=$('toast');e.textContent=t;e.style.display='block';
+ try{if(navigator.vibrate)navigator.vibrate(200)}catch(x){}
+ setTimeout(()=>{e.style.display='none'},8000);
+}
+function gen(key){
+ const d=D[key],s=d&&d.s,c=cfg(),a=ASSETS[key];
+ if(!s||s.state!=='go')return;
+ if(c.mode!=='All'&&s.type!==c.mode)return;
+ const id=`${key}-${s.dir}-${s.lvl.toFixed(a.dec)}`;
+ if(sigs.some(x=>x.id===id))return;
+ const op=sigs.filter(x=>x.open),same=op.filter(x=>x.key===key);
+ if(same.some(x=>x.dir!==s.dir)){limitMsg=`${a.name}: a ${s.dir} setup appeared but an opposite trade is open, so it was skipped.`;return}
+ if(same.length>=c.maxPer){limitMsg=`${a.name}: the limit of ${c.maxPer} open signals is reached, so a new setup was skipped.`;return}
+ const used=op.reduce((t,x)=>t+x.rk,0);
+ if(used+c.rk>c.maxTot){limitMsg=`The total open risk limit (${c.maxTot}%) is reached, so a new ${a.name} setup was skipped.`;return}
+ limitMsg='';
+ const money=c.cap*c.rk/100;
+ sigs.unshift({id,key,dir:s.dir,type:s.type,entry:s.entry,sl:s.sl,tp1:s.tp1,tp2:s.tp2,risk:s.risk,ra:s.risk/s.at,rk:c.rk,money,lots:money/(s.risk*a.unit),time:Date.now(),open:true,res:'Open',tp1hit:false,bias:d.b});
+ sv('sig2',sigs.slice(0,60));
+ toast(`New ${s.dir} signal: ${a.name} at ${s.entry.toFixed(a.dec)}`);
+}
+function why(s){
+ const d=D[s.key],r=[],mins=Math.round((Date.now()-s.time)/60000);
+ const flip=d&&((s.dir==='BUY'&&d.b==='Bearish')||(s.dir==='SELL'&&d.b==='Bullish'));
+ if(flip)r.push(`The 1H bias flipped to ${d.b.toLowerCase()}, so the higher-timeframe direction no longer supported this trade.`);
+ else if(d&&d.b==='Neutral')r.push('The 1H trend weakened into a range, so momentum faded after entry.');
+ else if(d&&d.b)r.push(`The 1H bias is still ${d.b.toLowerCase()}, so this may be a stop hunt or a normal pullback beyond the stop.`);
+ if(mins<30)r.push(`It was stopped within ${mins} minutes, which points to a fast spike such as news or a liquidity sweep.`);
+ if(s.ra<1)r.push(`The stop was tight (${s.ra.toFixed(1)}x the average 15M candle), so normal noise can reach it.`);
+ return r.join(' ')||'Price moved against the setup and the entry idea no longer held.';
+}
+function track(){
+ let ch=false;
+ sigs.forEach(s=>{
+  if(!s.open)return;
+  const p=P[s.key];if(!p)return;
+  const b=s.dir==='BUY',hitSl=b?p<=s.sl:p>=s.sl,hitT2=b?p>=s.tp2:p<=s.tp2,hitT1=b?p>=s.tp1:p<=s.tp1;
+  if(hitSl){
+   s.open=false;s.ct=Date.now();ch=true;
+   if(s.tp1hit){s.res='Closed at entry after TP1';s.r=1}
+   else{s.res='Stopped out';s.r=-1;s.reason=why(s)}
+  }else if(hitT2){s.open=false;s.ct=Date.now();s.res='TP2 hit';s.r=2.5;ch=true}
+  else if(hitT1&&!s.tp1hit){s.tp1hit=true;s.sl=s.entry;s.res='TP1 hit, stop at entry';ch=true}
+ });
+ if(ch){sv('sig2',sigs.slice(0,60));drawLines()}
+}
+
+function stamp(){
+ for(const k in ASSETS){
+  const d=D[k],p=P[k];if(!d||!d.m15||!p)continue;
+  for(const arr of [d.m15,d.h1]){const c=arr[arr.length-1];c.close=p;if(p>c.high)c.high=p;if(p<c.low)c.low=p}
+ }
+}
+function drawLines(){
+ lines.forEach(l=>series.removePriceLine(l));lines=[];
+ sigs.filter(s=>s.open&&s.key===cur).forEach(s=>{
+  [['Entry',s.entry,'#58a6ff'],['SL',s.sl,'#f85149'],['TP1',s.tp1,'#3fb950']].forEach(x=>{
+   lines.push(series.createPriceLine({price:x[1],color:x[2],lineWidth:1,lineStyle:2,axisLabelVisible:true,title:x[0]}));
   });
-  document.getElementById('updated').textContent = new Date().toLocaleString();
+ });
+}
+function draw(fit){
+ const d=D[cur];
+ if(!d||!d.m15)return;
+ const arr=tf==='15m'?d.m15:d.h1;
+ series.setData(arr.map(x=>Object.assign({},x,{time:x.time+off})));
+ drawLines();
+ if(fit)chart.timeScale().setVisibleLogicalRange({from:arr.length-90,to:arr.length+6});
+}
+function renderTabs(){
+ $('tabs').innerHTML=Object.keys(ASSETS).map(k=>{
+  const x=D[k],c=x&&x.b==='Bullish'?'bull':x&&x.b==='Bearish'?'bear':'',p=P[k];
+  return `<button class='tab ${k===cur?'on':''}' data-k='${k}'><div class='tn'>${ASSETS[k].name}</div><div class='tp'>${p?p.toFixed(ASSETS[k].dec):'…'}</div><div class='tb ${c}'>${x&&x.b?x.b:''}</div></button>`;
+ }).join('');
+ $('b15').className=tf==='15m'?'on':'';
+ $('b1h').className=tf==='1h'?'on':'';
+}
+function renderSug(){const c=cfg(),m=c.mode,sr=sugRisk(m),rr=m==='Scalp'?'1:1.5':m==='Swing'?'1:3':'1:2';let n='Lot sizes are worked out for you from your capital, your risk and each signal’s stop distance. Signals show TP1 at 1:2 and TP2 at 1:3. Risking more than 2% per trade is blocked, because chasing big profits with big risk is the fastest way to lose an account.';if(c.cap>0&&c.cap<100)n='Your capital is very small. Brokers have a minimum lot size, so a trade may risk more than you intend. Try a demo or cent account first. '+n;if(!c.auto&&c.rk>sr)n='You chose more risk than suggested, which means faster losses. '+n;$('sug').innerHTML=`<div class='row'><span>Suggested risk per trade</span><span>${sr}% ($${(c.cap*sr/100).toFixed(2)})</span></div><div class='row'><span>Your risk per trade</span><span>${c.rk}% ($${(c.cap*c.rk/100).toFixed(2)})</span></div><div class='row'><span>Minimum risk to reward</span><span>${rr} or better</span></div><div class='row'><span>Maximum allowed per trade</span><span>2% ($${(c.cap*0.02).toFixed(2)})</span></div><div class='row'><span>Max total open risk</span><span>${c.maxTot}% ($${(c.cap*c.maxTot/100).toFixed(2)})</span></div><div class='note'>${n}</div>`}function renderNow(){
+ const d=D[cur],a=ASSETS[cur];
+ if(!d||!d.s){$('now').innerHTML=`<div class='note'>${d&&d.err?'Could not reach the price feed. Try another network or turn off any VPN. It retries automatically.':'Loading live data…'}</div>`;return}
+ const s=d.s,f=v=>v.toFixed(a.dec),c=d.b==='Bullish'?'bull':d.b==='Bearish'?'bear':'';
+ let t='No clear 1H direction. The market looks like it is consolidating, so waiting is the safe call.';
+ if(s.state==='go')t='A valid setup is live right now. Check the signals list below.';
+ else if(s.why==='watch')t=`Bias is ${d.b.toLowerCase()}. Waiting for a 15M change of character: a close ${d.b==='Bullish'?'above':'below'} ${f(s.watch)}.`;
+ else if(s.why==='chase')t='The move has already run past the entry zone. Waiting for the next setup rather than chasing.';
+ else if(s.why==='wide')t='The stop would be too wide for a day trade. Waiting for a tighter setup.';
+ $('now').innerHTML=`<div class='row'><span>${a.name} 1H bias</span><span class='${c}'>${d.b}</span></div><div class='row'><span>Average daily range</span><span>${f(d.dATR)}</span></div><div class='note'>${t}</div>`;
+}
+function card(s){
+ const a=ASSETS[s.key],f=v=>v.toFixed(a.dec),b=s.dir==='BUY',p=P[s.key];
+ const cls=s.open?(s.tp1hit?'bull':''):(s.r>0?'bull':'bear');
+ let pl='';
+ if(s.open&&p){const r=(b?p-s.entry:s.entry-p)/s.risk;pl=` · Live ${r>=0?'+':''}${r.toFixed(2)}R ($${(r*s.money).toFixed(2)})`}
+ if(!s.open)pl=` · Result ${s.r>0?'+':''}${s.r.toFixed(1)}R ($${(s.r*s.money).toFixed(2)})`;
+ const nw=s.open&&Date.now()-s.time<90000?`<span class='tag nw'>NEW</span> `:'';
+ const ex=s.reason?`<div class='why'><b>Why it failed:</b> ${s.reason}</div>`:(s.warn&&s.open?`<div class='why'><b>Warning:</b> ${s.warn}</div>`:'');
+ return `<div class='sg'><div class='sh'><span><span class='tag'>${s.type}</span> ${nw}<b class='${b?'bull':'bear'}'>${a.name} ${s.dir}</b></span><b class='${cls}'>${s.res}</b></div><div class='sd'>Entry ${f(s.entry)} · SL ${f(s.sl)} · TP1 ${f(s.tp1)} · TP2 ${f(s.tp2)}</div><div class='sd'>Lots ${s.lots<0.01?'&lt;0.01':s.lots.toFixed(2)} · Risk $${s.money.toFixed(2)}${pl}</div><div class='sd'>Opened ${new Date(s.time).toLocaleTimeString()}</div>${ex}</div>`;
+}
+function renderSigs(){
+ const c=cfg(),op=sigs.filter(x=>x.open),cl=sigs.filter(x=>!x.open);
+ const w=cl.filter(x=>x.r>0).length,l=cl.filter(x=>x.r<0).length,net=cl.reduce((t,x)=>t+x.r,0);
+ const used=op.reduce((t,x)=>t+x.rk,0);
+ let h=`<div class='row'><span>Open signals</span><span>${op.length}</span></div><div class='row'><span>Open risk</span><span>${used.toFixed(1)}% of ${c.maxTot}% limit</span></div><div class='row'><span>Closed: wins / losses</span><span>${w} / ${l}</span></div><div class='row'><span>Net result</span><span class='${net>=0?'bull':'bear'}'>${net>=0?'+':''}${net.toFixed(1)}R</span></div>`;
+ if(limitMsg)h+=`<div class='note'>${limitMsg}</div>`;
+ const list=op.concat(cl.slice(0,12));
+ if(!list.length)h+=`<div class='note'>No signals yet. A new one appears here the moment a setup forms.</div>`;
+ $('sigs').innerHTML=h+list.map(card).join('');
 }
 
-document.getElementById('mode').addEventListener('change', render);
-document.getElementById('capital').addEventListener('input', render);
-document.getElementById('risk').addEventListener('input', render);
-render();
+async function tick(){
+ if(busy)return;
+ busy=true;
+ const q=encodeURIComponent(JSON.stringify(Object.values(ASSETS).map(a=>a.sym)));
+ for(const h of HOSTS){
+  try{
+   const r=await fetch(`${h}/api/v3/ticker/price?symbols=${q}`);
+   if(!r.ok)throw new Error('bad');
+   const a=await r.json();
+   for(const k in ASSETS){const x=a.find(y=>y.symbol===ASSETS[k].sym);if(x)P[k]=+x.price}
+   stamp();
+   const d=D[cur];
+   if(d&&d.m15){const arr=tf==='15m'?d.m15:d.h1,c=arr[arr.length-1];series.update(Object.assign({},c,{time:c.time+off}))}
+   track();renderTabs();renderSigs();
+   break;
+  }catch(e){}
+ }
+ busy=false;
+}
+async function refresh(){
+ await Promise.all(Object.keys(ASSETS).map(load));
+ stamp();
+ Object.keys(ASSETS).forEach(gen);
+ sigs.forEach(s=>{
+  const d=D[s.key];
+  const fl=d&&((s.dir==='BUY'&&d.b==='Bearish')||(s.dir==='SELL'&&d.b==='Bullish'));
+  s.warn=s.open&&!s.tp1hit&&fl?`The 1H bias flipped to ${d.b.toLowerCase()}. Consider closing early.`:'';
+ });
+ $('upd').textContent='Analysis '+new Date().toLocaleTimeString();
+ track();renderTabs();renderNow();renderSigs();draw(first);first=false;
+}
+$('tabs').onclick=e=>{const t=e.target.closest('.tab');if(t){cur=t.dataset.k;renderTabs();renderNow();draw(true)}};
+$('b15').onclick=()=>{tf='15m';renderTabs();draw(true)};
+$('b1h').onclick=()=>{tf='1h';renderTabs();draw(true)};
+['cap','rk','mode','maxper','maxtot'].forEach(id=>{$(id).oninput=()=>{saveCfg();renderSug();renderSigs()};$(id).onchange=$(id).oninput});
+renderTabs();renderNow();renderSigs();
+renderSug();refresh();tick();
+setInterval(tick,1000);
+setInterval(refresh,20000);
 </script>
-</body>
-</html>
+</body></html>
